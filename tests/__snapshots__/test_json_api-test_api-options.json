@@ -39,6 +39,7 @@
   },
   "fava_options": {
     "account-journal-include-children": "True",
+    "allowed-groups": "()",
     "auto-reload": "False",
     "collapse-pattern": "[]",
     "conversion-currencies": "()",

@@ -292,6 +292,84 @@ def test_read_only_mode(test_data_dir: Path) -> None:
         assert response.status_code == HTTPStatus.UNAUTHORIZED.value
 
 
+def test_auth_proxy_blocks_without_headers(test_data_dir: Path) -> None:
+    """Blocked when no identity headers are sent to a restricted ledger."""
+    app = create_app([test_data_dir / "example.beancount"], auth_proxy=True)
+    # Patch the ledger's allowed_groups so the ledger is restricted
+    with app.app_context():
+        ledgers = app.config["LEDGERS"]
+        ledger = next(iter(ledgers.items()))[1]
+        ledger.fava_options.__dict__["allowed_groups"] = ("family",)
+
+    test_client = app.test_client()
+    response = test_client.get("/example/income_statement/")
+    assert response.status_code == HTTPStatus.FORBIDDEN.value
+
+
+def test_auth_proxy_allows_matching_group(test_data_dir: Path) -> None:
+    """auth_proxy=True allows requests when the group header matches."""
+    app = create_app([test_data_dir / "example.beancount"], auth_proxy=True)
+    with app.app_context():
+        ledgers = app.config["LEDGERS"]
+        ledger = next(iter(ledgers.items()))[1]
+        ledger.fava_options.__dict__["allowed_groups"] = ("family",)
+
+    test_client = app.test_client()
+    headers = {
+        "X-Auth-Request-Email": "alice@example.com",
+        "X-Auth-Request-Groups": "family",
+    }
+    response = test_client.get("/example/income_statement/", headers=headers)
+    assert response.status_code in {
+        HTTPStatus.OK.value,
+        HTTPStatus.FOUND.value,
+    }
+
+
+def test_auth_proxy_off_needs_no_headers(test_data_dir: Path) -> None:
+    """Without auth_proxy, requests succeed without any identity headers."""
+    app = create_app([test_data_dir / "example.beancount"], auth_proxy=False)
+    test_client = app.test_client()
+    response = test_client.get("/example/income_statement/")
+    assert response.status_code in {
+        HTTPStatus.OK.value,
+        HTTPStatus.FOUND.value,
+    }
+
+
+def test_auth_proxy_index_redirects_to_accessible_ledger(
+    test_data_dir: Path,
+) -> None:
+    """GET / redirects to the first ledger the user can access."""
+    app = create_app([test_data_dir / "example.beancount"], auth_proxy=True)
+    test_client = app.test_client()
+    headers = {
+        "X-Auth-Request-Email": "alice@example.com",
+        "X-Auth-Request-Groups": "",
+    }
+    # open ledger (no allowed_groups) — alice can access it
+    response = test_client.get("/", headers=headers)
+    assert response.status_code == HTTPStatus.FOUND.value
+
+
+def test_auth_proxy_index_403_when_no_accessible_ledger(
+    test_data_dir: Path,
+) -> None:
+    """GET / returns 403 when the user has access to no ledger."""
+    app = create_app([test_data_dir / "example.beancount"], auth_proxy=True)
+    with app.app_context():
+        ledger = next(iter(app.config["LEDGERS"].items()))[1]
+        ledger.fava_options.__dict__["allowed_groups"] = ("admins",)
+
+    test_client = app.test_client()
+    headers = {
+        "X-Auth-Request-Email": "alice@example.com",
+        "X-Auth-Request-Groups": "family",
+    }
+    response = test_client.get("/", headers=headers)
+    assert response.status_code == HTTPStatus.FORBIDDEN.value
+
+
 def test_download_journal(
     test_client: FlaskClient,
     snapshot: SnapshotFunc,
