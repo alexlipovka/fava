@@ -3,6 +3,7 @@
   import { _ } from "../i18n.ts";
   import { keyboardShortcut } from "../keyboard-shortcuts.ts";
   import { errors, extensions, ledgerData } from "../stores/index.ts";
+  import { pending_count } from "../stores/offline.ts";
   import AccountSelector from "./AccountSelector.svelte";
   import Link from "./SidebarLink.svelte";
 
@@ -69,6 +70,11 @@
       bubble={[$errors.length, "error"]}
     />
   {/if}
+  {#if $pending_count > 0}
+    <li class="pending-sync">
+      <span>⏳ {$pending_count} pending sync</span>
+    </li>
+  {/if}
   <Link report="import" name={_("Import")} key="g n">
     <a href="#export" class="secondary" title={_("Export")}>⬇</a>
   </Link>
@@ -115,6 +121,20 @@
 
   .add-transaction {
     font-size: 23px;
+  }
+
+  .pending-sync {
+    display: flex;
+    padding: 0.25em 0.5em 0.25em 1em;
+    font-size: 0.85em;
+    color: var(--dark-gray);
+    background-color: var(--warning);
+    border-radius: 4px;
+    margin: 2px 4px;
+  }
+
+  .pending-sync span {
+    flex: 1;
   }
 
   .submenu {

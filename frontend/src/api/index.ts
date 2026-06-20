@@ -16,6 +16,7 @@ import { query_validator } from "../reports/query/query_table.ts";
 import { router } from "../router.ts";
 import { base_url } from "../stores/index.ts";
 import { set_mtime } from "../stores/mtime.ts";
+import { pending_count } from "../stores/offline.ts";
 import {
   account_report_validator,
   commodities_validator,
@@ -386,6 +387,9 @@ export async function delete_document(filename: string): Promise<boolean> {
   }
 }
 
+/** Sentinel returned by the service worker when an entry is queued offline. */
+const OFFLINE_QUEUED = "__offline_queued__";
+
 /**
  * Save an array of entries.
  * @param entries - an array of entries to save to the Beancount file.
@@ -395,8 +399,13 @@ export async function save_entries(
 ): Promise<void> {
   try {
     const msg = await put_add_entries({ entries });
-    router.reload();
-    notify(msg);
+    if (msg === OFFLINE_QUEUED) {
+      pending_count.update((n) => n + entries.length);
+      notify("Entry queued — will sync when reconnected.", "warning");
+    } else {
+      router.reload();
+      notify(msg);
+    }
   } catch (error) {
     notify_err(error, (e) => `Saving failed: ${e.message}`);
     throw error;

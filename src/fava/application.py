@@ -250,6 +250,8 @@ def _setup_template_config(fava_app: Flask, *, incognito: bool) -> None:
     @fava_app.context_processor
     def _template_context() -> dict[str, FavaLedger | type[ChartApi]]:
         """Inject variables into the template context."""
+        if not hasattr(g, "ledger"):
+            return {}
         return {"ledger": g.ledger, "chart_api": ChartApi}
 
 

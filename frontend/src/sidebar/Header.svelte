@@ -3,6 +3,7 @@
   import { router } from "../router.ts";
   import { ledgerData } from "../stores/index.ts";
   import { ledger_title } from "../stores/options.ts";
+  import { is_offline, pending_count } from "../stores/offline.ts";
   import FilterForm from "./FilterForm.svelte";
   import HeaderIcon from "./HeaderIcon.svelte";
   import PageTitle from "./PageTitle.svelte";
@@ -37,11 +38,35 @@
   >
     &#8635;
   </button>
+  {#if $is_offline || $pending_count > 0}
+    <span class="connection-status" class:syncing={!$is_offline && $pending_count > 0}>
+      {#if $is_offline}
+        ⚡ Offline{#if $pending_count > 0}&nbsp;· {$pending_count} queued{/if}
+      {:else}
+        ↑ Syncing {$pending_count}…
+      {/if}
+    </span>
+  {/if}
   <span class="spacer"></span>
   <FilterForm />
 </header>
 
 <style>
+  .connection-status {
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 4px;
+    background-color: var(--warning);
+    color: var(--dark-gray);
+    white-space: nowrap;
+  }
+
+  .connection-status.syncing {
+    background-color: var(--link-color);
+    color: white;
+  }
+
   .reload-page {
     color: var(--dark-gray);
     background-color: var(--warning);
