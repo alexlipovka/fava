@@ -311,6 +311,30 @@ def _setup_filters(
 
 
 def _setup_routes(fava_app: Flask) -> None:  # noqa: PLR0915
+    @fava_app.route("/sw.js")
+    def sw_js() -> WerkzeugResponse:
+        """Serve the service worker at root scope for full-app PWA coverage."""
+        resp = send_file(
+            Path(fava_app.static_folder or "") / "sw.js",
+            mimetype="application/javascript",
+        )
+        resp.headers["Service-Worker-Allowed"] = "/"
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+    @fava_app.route("/manifest.json")
+    def manifest_json() -> WerkzeugResponse:
+        """Serve the PWA web app manifest."""
+        return send_file(
+            Path(fava_app.static_folder or "") / "manifest.json",
+            mimetype="application/manifest+json",
+        )
+
+    @fava_app.route("/offline.html")
+    def offline_page() -> str:
+        """Offline fallback page served from the service worker cache."""
+        return render_template("offline.html")
+
     @fava_app.route("/")
     @fava_app.route("/<bfile>/")
     def index() -> WerkzeugResponse:

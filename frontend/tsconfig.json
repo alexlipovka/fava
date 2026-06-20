@@ -22,5 +22,8 @@
     "test/**/*.ts",
     "*.cjs",
     "*.js"
+  ],
+  "exclude": [
+    "src/sw.ts"
   ]
 }

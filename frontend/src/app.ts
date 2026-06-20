@@ -136,3 +136,7 @@ function init(): void {
 }
 
 init();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(log_error);
+}

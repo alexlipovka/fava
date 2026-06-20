@@ -9,7 +9,7 @@
       "secret": "dev-secret",
       "standardFlowEnabled": true,
       "redirectUris": [
-        "http://host.docker.internal:4180/oauth2/callback"
+        "http://localhost:4180/oauth2/callback"
       ],
       "webOrigins": ["+"],
       "protocolMappers": [
