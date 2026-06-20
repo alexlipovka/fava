@@ -90,6 +90,7 @@ class FavaOptions:
     """Options for Fava that can be set in the Beancount file."""
 
     account_journal_include_children: bool = True
+    allowed_groups: tuple[str, ...] = ()
     auto_reload: bool = False
     collapse_pattern: Sequence[re.Pattern[str]] = field(default_factory=list)
     conversion_currencies: tuple[str, ...] = ()

@@ -11,9 +11,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from flask import current_app
+from flask import request
 from flask import url_for
 from flask_babel import gettext
 
+from fava.auth import check_ledger_access
+from fava.auth import get_user_identity
 from fava.context import g
 from fava.util.excel import HAVE_EXCEL
 
@@ -23,6 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from fava.beans.abc import Meta
     from fava.beans.abc import Query
+    from fava.core import FavaLedger
     from fava.core.accounts import AccountDict
     from fava.core.charts import DateAndBalance
     from fava.core.charts import DateAndBalanceWithBudget
@@ -97,6 +101,13 @@ def _get_options() -> dict[str, str | Sequence[str]]:
     }
 
 
+def _user_can_access_ledger(led: FavaLedger) -> bool:
+    if not current_app.config.get("AUTH_PROXY"):
+        return True
+    email, groups = get_user_identity(request)
+    return check_ledger_access(led.fava_options.allowed_groups, email, groups)
+
+
 def get_ledger_data() -> LedgerData:
     """Get the report-independent ledger data."""
     ledger = g.ledger
@@ -126,6 +137,7 @@ def get_ledger_data() -> LedgerData:
             (ledger.options["title"], url_for("index", bfile=file_slug))
             for (file_slug, ledger) in current_app.config["LEDGERS"].items()
             if file_slug != g.beancount_file_slug
+            and _user_can_access_ledger(ledger)
         ],
     )
 

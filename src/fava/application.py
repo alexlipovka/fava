@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+import os
 from datetime import date
 from datetime import datetime
 from datetime import timezone
@@ -44,6 +45,8 @@ from werkzeug.utils import secure_filename
 from fava import LOCALES
 from fava import template_filters
 from fava._ctx_globals_class import Context
+from fava.auth import check_ledger_access
+from fava.auth import get_user_identity
 from fava.beans import funcs
 from fava.context import g
 from fava.core import FavaLedger
@@ -254,6 +257,7 @@ def _setup_filters(
     fava_app: Flask,
     *,
     read_only: bool,
+    auth_proxy: bool,
 ) -> None:
     """Setup request handlers/filters."""
     fava_app.url_defaults(_inject_filters)
@@ -289,6 +293,14 @@ def _setup_filters(
                 g.ledger = ledgers[g.beancount_file_slug]
             except KeyError:
                 abort(404)
+            if auth_proxy:
+                user_email, user_groups = get_user_identity(request)
+                if not check_ledger_access(
+                    g.ledger.fava_options.allowed_groups,
+                    user_email,
+                    user_groups,
+                ):
+                    abort(403)
 
     @fava_app.errorhandler(FavaAPIError)
     def fava_api_exception(error: FavaAPIError) -> tuple[str, int]:
@@ -305,7 +317,25 @@ def _setup_routes(fava_app: Flask) -> None:  # noqa: PLR0915
         """Redirect to the Income Statement (of the given or first file)."""
         ledgers: _LedgerSlugLoader = fava_app.config["LEDGERS"]
         if not g.beancount_file_slug:
-            g.beancount_file_slug = ledgers.first_slug()
+            if fava_app.config.get("AUTH_PROXY"):
+                user_email, user_groups = get_user_identity(request)
+                slug = next(
+                    (
+                        s
+                        for s, led in ledgers.items()
+                        if check_ledger_access(
+                            led.fava_options.allowed_groups,
+                            user_email,
+                            user_groups,
+                        )
+                    ),
+                    None,
+                )
+                if slug is None:
+                    abort(403)
+                g.beancount_file_slug = slug
+            else:
+                g.beancount_file_slug = ledgers.first_slug()
         index_url = url_for("index")
         default_page = ledgers[g.beancount_file_slug].fava_options.default_page
         return redirect(f"{index_url}{default_page}")
@@ -479,6 +509,7 @@ def create_app(
     incognito: bool = False,
     read_only: bool = False,
     poll_watcher: bool = False,
+    auth_proxy: bool = False,
 ) -> Flask:
     """Create a Fava Flask application.
 
@@ -488,14 +519,17 @@ def create_app(
         incognito: Whether to run in incognito mode.
         read_only: Whether to run in read-only mode.
         poll_watcher: Whether to use old poll watcher
+        auth_proxy: Whether to enforce proxy-injected auth headers (RBAC).
     """
+    auth_proxy = auth_proxy or os.environ.get("FAVA_AUTH_PROXY", "") == "1"
     fava_app = Flask("fava")
     fava_app.register_blueprint(json_api, url_prefix="/<bfile>/api")
     fava_app.json = FavaJSONProvider(fava_app)
     fava_app.app_ctx_globals_class = Context  # type: ignore[assignment]  # ty:ignore[invalid-assignment]
     _setup_template_config(fava_app, incognito=incognito)
     _setup_babel(fava_app)
-    _setup_filters(fava_app, read_only=read_only)
+    fava_app.config["AUTH_PROXY"] = auth_proxy
+    _setup_filters(fava_app, read_only=read_only, auth_proxy=auth_proxy)
     _setup_routes(fava_app)
 
     fava_app.config["HAVE_EXCEL"] = HAVE_EXCEL
