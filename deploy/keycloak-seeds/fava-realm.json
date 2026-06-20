@@ -1,0 +1,54 @@
+{
+  "realm": "fava",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "fava",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-secret",
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://host.docker.internal:4180/oauth2/callback"
+      ],
+      "webOrigins": ["+"],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {"name": "family"},
+    {"name": "alice"},
+    {"name": "bob"}
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "alice123", "temporary": false}],
+      "groups": ["/family", "/alice"]
+    },
+    {
+      "username": "bob",
+      "email": "bob@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "bob123", "temporary": false}],
+      "groups": ["/family", "/bob"]
+    }
+  ]
+}

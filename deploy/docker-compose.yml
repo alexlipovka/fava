@@ -1,0 +1,91 @@
+# Production stack. TLS is handled by the existing Nginx Proxy Manager (NPM)
+# on the 'localweb' Docker network.
+#
+# NPM proxy hosts to configure (in NPM web UI):
+#   fava.yourdomain.com  →  oauth2-proxy : 4180   (SSL + Force SSL)
+#   auth.yourdomain.com  →  keycloak : 8080        (SSL + Force SSL)
+#
+# Copy .env.example to .env and fill in values before running.
+# Usage: docker compose up -d
+
+networks:
+  internal:
+  localweb:
+    external: true
+
+volumes:
+  pg_data:
+  keycloak_data:
+
+services:
+  postgres-keycloak:
+    image: postgres:16
+    networks: [internal]
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5.5
+    command: start --import-realm
+    networks: [internal, localweb]
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: auth.${FAVA_DOMAIN}
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak-seeds:/opt/keycloak/data/import:ro
+
+  keycloak-ready:
+    image: curlimages/curl
+    networks: [internal]
+    depends_on: [keycloak]
+    restart: on-failure
+    command:
+      - sh
+      - -c
+      - "until curl -sf http://keycloak:9000/health/ready; do echo 'Waiting for Keycloak...'; sleep 5; done"
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    networks: [internal, localweb]
+    depends_on:
+      keycloak-ready:
+        condition: service_completed_successfully
+    volumes:
+      - ./oauth2-proxy.cfg:/etc/oauth2-proxy/cfg:ro
+    command: --config=/etc/oauth2-proxy/cfg
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_COOKIE_SECRET}
+
+  fava:
+    build:
+      context: ..
+      dockerfile: deploy/fava/Dockerfile
+    networks: [internal]
+    volumes:
+      - ${BEANCOUNT_DIR}:/beancount:ro
+    environment:
+      BEANCOUNT_FILE: ${BEANCOUNT_FILE}
+      FAVA_AUTH_PROXY: "1"
