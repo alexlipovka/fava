@@ -83,7 +83,7 @@ services:
       dockerfile: deploy/fava/Dockerfile
     networks: [local-fava]
     volumes:
-      - ${BEANCOUNT_DIR}:/beancount:ro
+      - ${BEANCOUNT_DIR}:/beancount
     environment:
       BEANCOUNT_FILE: ${BEANCOUNT_FILE}
       FAVA_AUTH_PROXY: "1"
