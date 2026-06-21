@@ -25,13 +25,13 @@ import "@ungap/custom-elements";
 import { get as store_get } from "svelte/store";
 
 import { get_changed, get_errors, get_ledger_data } from "./api/index.ts";
-import { get_pending_count } from "./lib/offline-queue.ts";
 import { ledgerDataValidator } from "./api/validators.ts";
 import { CopyableText } from "./clipboard.ts";
 import { BeancountTextarea } from "./codemirror/dom.ts";
 import { _ } from "./i18n.ts";
 import { initGlobalKeyboardShortcuts } from "./keyboard-shortcuts.ts";
 import { getScriptTagValue } from "./lib/dom.ts";
+import { get_pending_count } from "./lib/offline-queue.ts";
 import { log_error } from "./log.ts";
 import { notify, notify_err } from "./notifications.ts";
 import { frontend_routes } from "./reports/routes.ts";
@@ -45,8 +45,8 @@ import {
   invert_gains_losses_colors,
 } from "./stores/fava_options.ts";
 import { errors, ledgerData } from "./stores/index.ts";
-import { is_offline, pending_count } from "./stores/offline.ts";
 import { ledger_mtime, read_mtime } from "./stores/mtime.ts";
+import { is_offline, pending_count } from "./stores/offline.ts";
 import { SvelteCustomElement } from "./svelte-custom-elements.ts";
 import { TreeTableCustomElement } from "./tree-table/tree-table-custom-element.ts";
 
@@ -144,7 +144,9 @@ if ("serviceWorker" in navigator) {
 
   // Refresh pending count from IDB on startup.
   get_pending_count()
-    .then((n) => pending_count.set(n))
+    .then((n) => {
+      pending_count.set(n);
+    })
     .catch(log_error);
 
   // Listen for sync-complete messages posted by the service worker after draining the queue.
@@ -152,7 +154,9 @@ if ("serviceWorker" in navigator) {
     const data = event.data as { type?: string } | null;
     if (data?.type === "sync-complete") {
       get_pending_count()
-        .then((n) => pending_count.set(n))
+        .then((n) => {
+          pending_count.set(n);
+        })
         .catch(log_error);
       notify(_("Offline entries synced."), "info");
       router.reload();
@@ -161,7 +165,9 @@ if ("serviceWorker" in navigator) {
 }
 
 // Track online/offline state.
-window.addEventListener("offline", () => is_offline.set(true));
+window.addEventListener("offline", () => {
+  is_offline.set(true);
+});
 window.addEventListener("online", () => {
   is_offline.set(false);
   if ("serviceWorker" in navigator) {
@@ -171,7 +177,11 @@ window.addEventListener("online", () => {
         reg.active?.postMessage({ type: "drain-queue" });
         // Also register Background Sync as a resilient fallback for when
         // the tab is closed and connectivity returns later.
-        const sync = (reg as unknown as { sync?: { register: (tag: string) => Promise<void> } }).sync;
+        const sync = (
+          reg as unknown as {
+            sync?: { register: (tag: string) => Promise<void> };
+          }
+        ).sync;
         sync?.register("fava-sync-entries").catch(log_error);
       })
       .catch(log_error);

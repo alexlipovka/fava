@@ -23,7 +23,5 @@
     "*.cjs",
     "*.js"
   ],
-  "exclude": [
-    "src/sw.ts"
-  ]
+  "exclude": ["src/sw.ts"]
 }

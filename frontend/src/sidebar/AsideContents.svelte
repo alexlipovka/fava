@@ -126,11 +126,11 @@
   .pending-sync {
     display: flex;
     padding: 0.25em 0.5em 0.25em 1em;
+    margin: 2px 4px;
     font-size: 0.85em;
     color: var(--dark-gray);
     background-color: var(--warning);
     border-radius: 4px;
-    margin: 2px 4px;
   }
 
   .pending-sync span {

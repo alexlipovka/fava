@@ -51,7 +51,7 @@ interface QueuedEntry {
   status: "pending" | "failed";
 }
 
-function idb_open(): Promise<IDBDatabase> {
+async function idb_open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_NAME, IDB_VERSION);
     req.onupgradeneeded = () => {
@@ -60,14 +60,18 @@ function idb_open(): Promise<IDBDatabase> {
         autoIncrement: true,
       });
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      resolve(req.result);
+    };
+    req.onerror = () => {
+      reject(req.error);
+    };
   });
 }
 
-function idb_add(slug: string, entries: unknown[]): Promise<void> {
+async function idb_add(slug: string, entries: unknown[]): Promise<void> {
   return idb_open().then(
-    (db) =>
+    async (db) =>
       new Promise((resolve, reject) => {
         const tx = db.transaction(IDB_STORE, "readwrite");
         tx.objectStore(IDB_STORE).add({
@@ -80,14 +84,16 @@ function idb_add(slug: string, entries: unknown[]): Promise<void> {
           db.close();
           resolve();
         };
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => {
+          reject(tx.error);
+        };
       }),
   );
 }
 
-function idb_get_all(): Promise<QueuedEntry[]> {
+async function idb_get_all(): Promise<QueuedEntry[]> {
   return idb_open().then(
-    (db) =>
+    async (db) =>
       new Promise((resolve, reject) => {
         const tx = db.transaction(IDB_STORE, "readonly");
         const req = tx.objectStore(IDB_STORE).getAll();
@@ -95,14 +101,16 @@ function idb_get_all(): Promise<QueuedEntry[]> {
           db.close();
           resolve(req.result as QueuedEntry[]);
         };
-        req.onerror = () => reject(req.error);
+        req.onerror = () => {
+          reject(req.error);
+        };
       }),
   );
 }
 
-function idb_remove(id: number): Promise<void> {
+async function idb_remove(id: number): Promise<void> {
   return idb_open().then(
-    (db) =>
+    async (db) =>
       new Promise((resolve, reject) => {
         const tx = db.transaction(IDB_STORE, "readwrite");
         tx.objectStore(IDB_STORE).delete(id);
@@ -110,7 +118,9 @@ function idb_remove(id: number): Promise<void> {
           db.close();
           resolve();
         };
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => {
+          reject(tx.error);
+        };
       }),
   );
 }
@@ -139,7 +149,9 @@ async function drain_queue(): Promise<void> {
   }
   if (any_synced) {
     const clients = await self.clients.matchAll();
-    clients.forEach((c) => c.postMessage({ type: "sync-complete" }));
+    for (const c of clients) {
+      c.postMessage({ type: "sync-complete" });
+    }
   }
 }
 
@@ -149,7 +161,7 @@ async function drain_queue(): Promise<void> {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)),
+    caches.open(CACHE).then(async (cache) => cache.addAll(PRECACHE)),
   );
   self.skipWaiting();
 });
@@ -158,8 +170,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
+      .then(async (keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE).map(async (k) => caches.delete(k)),
+        ),
       ),
   );
   self.clients.claim();
@@ -188,7 +202,9 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // Intercept add_entries before the generic API passthrough so we can queue
   // the request when offline instead of dropping it entirely.
@@ -221,7 +237,10 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-async function handle_add_entries(request: Request, url: URL): Promise<Response> {
+async function handle_add_entries(
+  request: Request,
+  url: URL,
+): Promise<Response> {
   // Read body before attempting the fetch so we can reuse it in the catch branch.
   const body_text = await request.text();
   try {
@@ -251,7 +270,9 @@ async function handle_add_entries(request: Request, url: URL): Promise<Response>
 
 async function cache_first(request: Request): Promise<Response> {
   const cached = await caches.match(request);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const response = await fetch(request);
   const cache = await caches.open(CACHE);
   cache.put(request, response.clone());

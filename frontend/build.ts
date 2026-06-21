@@ -23,7 +23,9 @@ async function cleanup_outdir(
   for (const f of ["icon-192.png", "icon-512.png", "manifest.json"]) {
     to_keep.add(f);
   }
-  for (const f of extra_keep) to_keep.add(f);
+  for (const f of extra_keep) {
+    to_keep.add(f);
+  }
   const outdir_files = await readdir(outdir);
   for (const to_delete of outdir_files.filter((f) => !to_keep.has(f))) {
     console.log(`Cleaning up '${to_delete}'`);

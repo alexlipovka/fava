@@ -927,58 +927,28 @@
   },
   "have_excel": true,
   "incognito": false,
-  "links": [
-    "test-link"
-  ],
+  "links": ["test-link"],
   "options": {
     "documents": [],
     "filename": "TEST_DATA_DIR/long-example.beancount",
-    "include": [
-      "TEST_DATA_DIR/long-example.beancount"
-    ],
+    "include": ["TEST_DATA_DIR/long-example.beancount"],
     "name_assets": "Assets",
     "name_equity": "Equity",
     "name_expenses": "Expenses",
     "name_income": "Income",
     "name_liabilities": "Liabilities",
-    "operating_currency": [
-      "USD"
-    ],
+    "operating_currency": ["USD"],
     "title": "Long Example"
   },
   "other_ledgers": [
-    [
-      "Edit Example",
-      "/edit-example/"
-    ],
-    [
-      "Example",
-      "/example/"
-    ],
-    [
-      "Extension Report",
-      "/extension-report/"
-    ],
-    [
-      "import",
-      "/import/"
-    ],
-    [
-      "Query Example",
-      "/query-example/"
-    ],
-    [
-      "errors",
-      "/errors/"
-    ],
-    [
-      "off-by-one",
-      "/off-by-one/"
-    ],
-    [
-      "invalid-unicode",
-      "/invalid-unicode/"
-    ]
+    ["Edit Example", "/edit-example/"],
+    ["Example", "/example/"],
+    ["Extension Report", "/extension-report/"],
+    ["import", "/import/"],
+    ["Query Example", "/query-example/"],
+    ["errors", "/errors/"],
+    ["off-by-one", "/off-by-one/"],
+    ["invalid-unicode", "/invalid-unicode/"]
   ],
   "payees": [
     "BayBook",
